@@ -9,7 +9,7 @@ from google.oauth2 import id_token
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build, Resource
 from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService, Session
+from google.adk.sessions import InMemorySessionService, Session, GetSessionConfig
 from google.genai import types as genai_types
 from google.adk.agents import LlmAgent
 from typing import Callable, List, Any, Dict, Optional
@@ -150,7 +150,8 @@ class GoogleChatBot:
                 chat_session: Session = self.session_service.get_session(
                     app_name=self.app_name,
                     user_id=adk_user_id,
-                    session_id=adk_session_id)
+                    session_id=adk_session_id,
+                    config=GetSessionConfig(num_recent_events=10))
                 if not chat_session:
                     logging.info(f"Creating new session for user {adk_user_id} in space {adk_session_id}")
                     chat_session = self.session_service.create_session(
