@@ -5,7 +5,7 @@ import logging # Added standard logging
 import threading
 from flask import Flask, request, jsonify
 import google.auth # Added for ADC
-from google.oauth2 import service_account # Keep for type hinting if needed, but ADC is used
+from google.oauth2 import id_token
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build, Resource
 from google.adk.runners import Runner
@@ -35,7 +35,8 @@ class GoogleChatBot:
                  generate_agent_fn: AgentGenerator,
                  chat_service: Resource, # Pass the authenticated Chat API service
                  allowed_space_ids: List[str] = [], # Use Chat space IDs (space.name)
-                 app_name: str = "GoogleChatBot"):
+                 app_name: str = "GoogleChatBot",
+                 session_size: int = -1):
         self.generate_agent_fn = generate_agent_fn
         self.allowed_space_ids = allowed_space_ids
         self.chat_service = chat_service # Store the Chat API client
@@ -44,24 +45,24 @@ class GoogleChatBot:
         self.app_name = app_name
         # Lock for thread-safe access to runners dictionary during creation
         self.runner_lock = threading.Lock()
-        # Removed self.debug
+        self.session_size = session_size
 
     def _create_send_chat_message_tool(self, space_name: str) -> Callable:
         """
         Factory function to create the tool for sending a message
         back to a specific Google Chat space.
         """
-        def send_chat_message(message_text: str) -> str:
+        def send_reply_to_user(msg: str) -> str:
             """
-            Use this tool to send a message text back to the user.
+            Use this tool to send a message text back to the user. You MUST use this tool for sending the message.
             Args:
-                message_text: The text content of the message to send.
+                msg: The text content of the message to send.
             """
             logging.info(f"Agent requested sending message via tool to space {space_name}")
             # Use logging.debug for potentially verbose output
             # logging.debug(f"Message content: {message_text}")
             try:
-                message_body = {'text': message_text}
+                message_body = {'text': msg}
                 self.chat_service.spaces().messages().create(
                     parent=space_name,
                     body=message_body
@@ -70,7 +71,7 @@ class GoogleChatBot:
             except Exception as e:
                 logging.error(f"Error sending message via tool to space {space_name}: {e}", exc_info=True)
                 return f"Error sending message: {e}"
-        return send_chat_message
+        return send_reply_to_user
 
     def _process_event_async(self, chat_event: Dict[str, Any]):
         """
@@ -268,18 +269,17 @@ class GoogleChatBot:
             logging.warning("Missing or invalid Authorization header")
             # IMPORTANT: In a real app, return 401 Unauthorized here.
             # For now, we'll proceed but log the warning.
-            # return jsonify({"error": "Unauthorized"}), 401
+            return jsonify({"error": "Unauthorized"}), 401
         else:
-            id_token = auth_header.split('Bearer ')[1]
             try:
                 # TODO: Implement actual token verification using google.oauth2.id_token.verify_oauth2_token
                 # You need the Audience (often the Cloud Run service URL or project number)
-                # audience = os.environ.get("ID_TOKEN_AUDIENCE") # Configure this env var
-                # if audience:
-                #    id_info = id_token.verify_oauth2_token(id_token, Request(), audience=audience)
-                #    logging.info(f"Successfully verified token for issuer: {id_info.get('iss')}")
-                # else:
-                #    logging.warning("ID_TOKEN_AUDIENCE environment variable not set. Skipping token verification.")
+                audience = os.environ.get("ID_TOKEN_AUDIENCE") # Configure this env var
+                if audience:
+                   id_info = id_token.verify_oauth2_token(id_token, Request(), audience=audience)
+                   logging.info(f"Successfully verified token for issuer: {id_info.get('iss')}")
+                else:
+                   logging.warning("ID_TOKEN_AUDIENCE environment variable not set. Skipping token verification.")
                 logging.debug("Skipping token verification (placeholder).") # Placeholder
                 pass # Placeholder for successful verification
             except ValueError as e:

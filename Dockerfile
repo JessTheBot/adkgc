@@ -44,5 +44,5 @@ EXPOSE $PORT
 #    - Use the $PORT environment variable provided by Cloud Run.
 #    - Adjust the number of workers (-w) based on expected load and Cloud Run instance size (e.g., 2-4 is common).
 #    - Replace 'main:flask_app' if your Python file or Flask app instance variable is named differently.
-CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "--workers", "2", "main.py"]
+CMD ["python", "main.py"]
 

@@ -5,7 +5,7 @@ set -e
 
 # --- Configuration ---
 # TODO: Replace these placeholders with your actual values
-export PROJECT_ID="slava-jess-bot"
+export PROJECT_ID="jess-agent"
 export LOCATION="us-west1" # e.g., us-west1
 export REPOSITORY_NAME="chat-bot"          # The name of your Artifact Registry Docker repository
 export IMAGE_NAME="jess"                     # The name for your container image
@@ -39,14 +39,14 @@ echo "------------------------------------"
 #    - Assumes your Dockerfile is in the current directory (.)
 #    - Tags the image with the full Artifact Registry path
 echo "\nBuilding Docker image: ${FULL_IMAGE_PATH}..."
-podman build -t "${FULL_IMAGE_PATH}" .
+docker build -t "${FULL_IMAGE_PATH}" .
 
 echo "\nDocker image build complete."
 echo "------------------------------------"
 
 # 3. Push the Docker image to Artifact Registry
 echo "\nPushing image to Artifact Registry: ${FULL_IMAGE_PATH}..."
-podman push "${FULL_IMAGE_PATH}"
+docker push "${FULL_IMAGE_PATH}"
 
 echo "\nDocker image push complete."
 echo "------------------------------------"
